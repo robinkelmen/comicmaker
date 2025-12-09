@@ -77,7 +77,7 @@ export function parseNatural(text: string): ParseResult {
         ok: true,
         comic: {
           title,
-          style: 'comic book',
+          style: 'cartoon',
           pages: [{
             number: 1,
             panels: [{
@@ -106,7 +106,7 @@ export function parseNatural(text: string): ParseResult {
       ok: true,
       comic: {
         title,
-        style: 'comic book',
+        style: 'cartoon',
         pages
       },
       errors
@@ -252,7 +252,7 @@ function extractCharacter(fullMatch: string, dialogue: string): string | null {
 function createEmptyComic(): Comic {
   return {
     title: 'Empty Comic',
-    style: 'comic book',
+    style: 'cartoon',
     pages: [{
       number: 1,
       panels: []

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react'
-import { parse } from './parser'
 import { parseNatural } from './naturalParser'
 import { ComicPreview } from './ComicPreview'
 import { GenerationStatus } from './ProgressBar'

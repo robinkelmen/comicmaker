@@ -17,7 +17,7 @@ npm run render src/examples/simple.md comic.html
 open comic.html
 
 # Generate AI images (requires API key)
-REPLICATE_API_TOKEN=r8_xxx npm run generate src/examples/simple.md
+STABILITY_API_KEY=sk-xxx npm run generate src/examples/simple.md
 ```
 
 ## DSL Syntax
@@ -86,16 +86,23 @@ npm run typecheck         # TypeScript check
 
 ## AI Setup
 
-### Replicate (recommended)
+### Stability AI (recommended)
 
-1. Get API token at [replicate.com](https://replicate.com)
-2. Run with token:
+1. Get API key at [platform.stability.ai](https://platform.stability.ai)
+2. Run with key:
 
 ```bash
-REPLICATE_API_TOKEN=r8_xxx npm run generate src/examples/simple.md
+STABILITY_API_KEY=sk-xxx npm run generate src/examples/simple.md
 ```
 
-Cost: ~$0.003/image using SDXL.
+### OpenAI (DALL-E)
+
+1. Get API key at [platform.openai.com](https://platform.openai.com)
+2. Run with key:
+
+```bash
+OPENAI_API_KEY=sk-xxx npm run generate src/examples/simple.md
+```
 
 ## Architecture
 
@@ -108,7 +115,7 @@ src/
 │   ├── parse.ts            # DSL text → Comic object
 │   └── validate.ts         # Schema validation (AJV)
 ├── services/
-│   └── generate.ts         # Replicate API integration
+│   └── generate.ts         # AI image generation
 ├── render/
 │   └── html.ts             # Comic → standalone HTML
 ├── examples/
@@ -170,7 +177,7 @@ Woof!' | npm run parse /dev/stdin
 ## Existing Tools We Leverage
 
 - **[AI Comic Factory](https://github.com/jbilcke-hf/ai-comic-factory)** - Open source reference for LLM+SDXL comic generation
-- **[Replicate](https://replicate.com)** - Cheapest AI image API (~$0.003/image)
+- **[Stability AI](https://platform.stability.ai)** - High-quality image generation API
 - **[AJV](https://ajv.js.org)** - JSON Schema validation
 
 ## Future

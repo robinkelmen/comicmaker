@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "comic.schema.json",
+  "title": "Comic",
+  "description": "A comic project with pages and panels",
+  "type": "object",
+  "required": ["title", "pages"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "author": {
+      "type": "string"
+    },
+    "style": {
+      "$ref": "#/$defs/style"
+    },
+    "pages": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/page" },
+      "minItems": 1
+    }
+  },
+  "$defs": {
+    "style": {
+      "type": "string",
+      "enum": ["manga", "superhero", "cartoon", "webcomic", "noir", "chibi"],
+      "default": "cartoon"
+    },
+    "page": {
+      "type": "object",
+      "required": ["panels"],
+      "properties": {
+        "layout": {
+          "type": "string",
+          "enum": ["auto", "single", "splash", "1x2", "2x1", "2x2", "3x3"],
+          "default": "auto"
+        },
+        "panels": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/panel" },
+          "minItems": 1
+        }
+      }
+    },
+    "panel": {
+      "type": "object",
+      "required": ["description"],
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Scene description for AI image generation"
+        },
+        "dialogue": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/dialogue" }
+        },
+        "narration": {
+          "type": "string"
+        },
+        "sfx": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/soundEffect" }
+        },
+        "image": {
+          "$ref": "#/$defs/generatedImage"
+        }
+      }
+    },
+    "dialogue": {
+      "type": "object",
+      "required": ["character", "text"],
+      "properties": {
+        "character": { "type": "string" },
+        "text": { "type": "string" },
+        "emotion": {
+          "type": "string",
+          "enum": ["neutral", "happy", "sad", "angry", "surprised", "scared", "excited"]
+        },
+        "style": {
+          "type": "string",
+          "enum": ["normal", "shout", "whisper", "thought"]
+        }
+      }
+    },
+    "soundEffect": {
+      "type": "object",
+      "required": ["text"],
+      "properties": {
+        "text": { "type": "string" },
+        "intensity": {
+          "type": "string",
+          "enum": ["subtle", "medium", "loud"]
+        }
+      }
+    },
+    "generatedImage": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string" },
+        "prompt": { "type": "string" },
+        "seed": { "type": "integer" }
+      }
+    }
+  }
+}

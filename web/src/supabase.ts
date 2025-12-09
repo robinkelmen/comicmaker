@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import type { Comic } from './types'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -17,18 +18,19 @@ export interface SavedComic {
   id: string
   title: string
   script: string
+  data?: Comic  // Full comic data with generated images
   created_at: string
   updated_at: string
 }
 
-export async function saveComic(title: string, script: string): Promise<{ data: SavedComic | null; error: string | null }> {
+export async function saveComic(title: string, script: string, comicData?: Comic): Promise<{ data: SavedComic | null; error: string | null }> {
   if (!supabase) {
     return { data: null, error: 'Supabase not configured' }
   }
 
   const { data, error } = await supabase
     .from('comics')
-    .insert({ title, script })
+    .insert({ title, script, data: comicData })
     .select()
     .single()
 
@@ -71,14 +73,14 @@ export async function loadComic(id: string): Promise<{ data: SavedComic | null; 
   return { data: data as SavedComic, error: null }
 }
 
-export async function updateComic(id: string, title: string, script: string): Promise<{ data: SavedComic | null; error: string | null }> {
+export async function updateComic(id: string, title: string, script: string, comicData?: Comic): Promise<{ data: SavedComic | null; error: string | null }> {
   if (!supabase) {
     return { data: null, error: 'Supabase not configured' }
   }
 
   const { data, error } = await supabase
     .from('comics')
-    .update({ title, script, updated_at: new Date().toISOString() })
+    .update({ title, script, data: comicData, updated_at: new Date().toISOString() })
     .eq('id', id)
     .select()
     .single()

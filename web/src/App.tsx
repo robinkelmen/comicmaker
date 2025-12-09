@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { parse } from './parser'
 import { ComicPreview } from './ComicPreview'
 import { saveComic, loadComics, updateComic, deleteComic, SavedComic } from './supabase'
+import { generatePanelImage, saveAISettings, loadAISettings, AISettings } from './ai'
+import type { Comic } from './types'
 
 const EXAMPLE_SCRIPT = `---
 title: Hero's Journey
@@ -57,7 +59,20 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
+  // AI generation state
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [aiSettings, setAISettings] = useState<AISettings | null>(() => loadAISettings())
+  const [generatingAll, setGeneratingAll] = useState(false)
+  const [comic, setComic] = useState<Comic | null>(null)
+
   const result = parse(script)
+
+  // Update comic state when script changes
+  useEffect(() => {
+    if (result.ok) {
+      setComic(result.comic)
+    }
+  }, [result])
 
   useEffect(() => {
     if (message) {
@@ -75,7 +90,7 @@ export default function App() {
     setSaving(true)
     try {
       if (currentComicId) {
-        const { error } = await updateComic(currentComicId, saveTitle, script)
+        const { error } = await updateComic(currentComicId, saveTitle, script, comic || undefined)
         if (error) {
           setMessage({ type: 'error', text: error })
         } else {
@@ -83,7 +98,7 @@ export default function App() {
           setShowSaveModal(false)
         }
       } else {
-        const { data, error } = await saveComic(saveTitle, script)
+        const { data, error } = await saveComic(saveTitle, script, comic || undefined)
         if (error) {
           setMessage({ type: 'error', text: error })
         } else if (data) {
@@ -110,12 +125,16 @@ export default function App() {
     setLoading(false)
   }
 
-  const handleLoadComic = (comic: SavedComic) => {
-    setScript(comic.script)
-    setCurrentComicId(comic.id)
-    setSaveTitle(comic.title)
+  const handleLoadComic = (savedComic: SavedComic) => {
+    setScript(savedComic.script)
+    setCurrentComicId(savedComic.id)
+    setSaveTitle(savedComic.title)
+    // Restore comic data if it exists (includes generated images)
+    if (savedComic.data) {
+      setComic(savedComic.data)
+    }
     setShowLoadModal(false)
-    setMessage({ type: 'success', text: `Loaded "${comic.title}"` })
+    setMessage({ type: 'success', text: `Loaded "${savedComic.title}"` })
   }
 
   const handleDeleteComic = async (id: string, e: React.MouseEvent) => {
@@ -149,6 +168,103 @@ export default function App() {
     setShowSaveModal(true)
   }
 
+  const handleSaveAISettings = (settings: AISettings) => {
+    setAISettings(settings)
+    saveAISettings(settings)
+    setShowSettingsModal(false)
+    setMessage({ type: 'success', text: 'AI settings saved!' })
+  }
+
+  const handleGeneratePanel = async (pageIndex: number, panelIndex: number) => {
+    if (!aiSettings) {
+      setMessage({ type: 'error', text: 'Please configure AI settings first' })
+      setShowSettingsModal(true)
+      return
+    }
+
+    if (!comic) return
+
+    // Set panel as generating
+    const updatedComic = { ...comic }
+    updatedComic.pages[pageIndex].panels[panelIndex].generating = true
+    setComic(updatedComic)
+
+    try {
+      const panel = comic.pages[pageIndex].panels[panelIndex]
+      const imageUrl = await generatePanelImage(panel, aiSettings)
+
+      // Update panel with generated image
+      const finalComic = { ...comic }
+      finalComic.pages[pageIndex].panels[panelIndex].imageUrl = imageUrl
+      finalComic.pages[pageIndex].panels[panelIndex].generating = false
+      setComic(finalComic)
+
+      setMessage({ type: 'success', text: 'Panel generated!' })
+
+      // Auto-save if comic is already saved
+      if (currentComicId) {
+        await updateComic(currentComicId, saveTitle, script, comic || undefined)
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: `Generation failed: ${error}` })
+
+      // Clear generating state
+      const errorComic = { ...comic }
+      errorComic.pages[pageIndex].panels[panelIndex].generating = false
+      setComic(errorComic)
+    }
+  }
+
+  const handleGenerateAll = async () => {
+    if (!aiSettings) {
+      setMessage({ type: 'error', text: 'Please configure AI settings first' })
+      setShowSettingsModal(true)
+      return
+    }
+
+    if (!comic) return
+
+    setGeneratingAll(true)
+    let successCount = 0
+    let failCount = 0
+
+    for (let pageIndex = 0; pageIndex < comic.pages.length; pageIndex++) {
+      for (let panelIndex = 0; panelIndex < comic.pages[pageIndex].panels.length; panelIndex++) {
+        const panel = comic.pages[pageIndex].panels[panelIndex]
+
+        // Skip panels that already have images
+        if (panel.imageUrl) continue
+
+        try {
+          const imageUrl = await generatePanelImage(panel, aiSettings)
+
+          // Update panel with generated image
+          const updatedComic = { ...comic }
+          updatedComic.pages[pageIndex].panels[panelIndex].imageUrl = imageUrl
+          setComic(updatedComic)
+
+          successCount++
+        } catch (error) {
+          console.error(`Failed to generate panel ${pageIndex}-${panelIndex}:`, error)
+          failCount++
+        }
+      }
+    }
+
+    setGeneratingAll(false)
+
+    if (failCount === 0) {
+      setMessage({ type: 'success', text: `Generated ${successCount} panels!` })
+    } else {
+      setMessage({ type: 'error', text: `Generated ${successCount} panels, ${failCount} failed` })
+    }
+
+    // Auto-save if comic is already saved
+    if (currentComicId) {
+      await updateComic(currentComicId, saveTitle, script, comic || undefined)
+    }
+  }
+
   return (
     <div className="app">
       <header className="header">
@@ -159,6 +275,14 @@ export default function App() {
             {loading ? 'Loading...' : 'Load'}
           </button>
           <button className="btn btn-primary" onClick={openSaveModal}>Save</button>
+          <button className="btn btn-secondary" onClick={() => setShowSettingsModal(true)}>⚙️ AI Settings</button>
+          <button
+            className="btn btn-primary"
+            onClick={handleGenerateAll}
+            disabled={generatingAll || !result.ok}
+          >
+            {generatingAll ? '⏳ Generating...' : '🎨 Generate All'}
+          </button>
         </div>
       </header>
 
@@ -195,7 +319,11 @@ export default function App() {
         <div className="editor-header">Preview</div>
         <div className="preview">
           {result.ok ? (
-            <ComicPreview comic={result.comic} />
+            <ComicPreview
+              comic={comic || result.comic}
+              onGeneratePanel={handleGeneratePanel}
+              generating={generatingAll}
+            />
           ) : (
             <div className="error-display">
               <strong>Parse Errors:</strong>
@@ -246,7 +374,7 @@ export default function App() {
                         {new Date(comic.updated_at).toLocaleDateString()}
                       </span>
                     </div>
-                    <button 
+                    <button
                       className="btn btn-danger btn-small"
                       onClick={(e) => handleDeleteComic(comic.id, e)}
                     >
@@ -262,6 +390,82 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {showSettingsModal && <AISettingsModal
+        currentSettings={aiSettings}
+        onSave={handleSaveAISettings}
+        onClose={() => setShowSettingsModal(false)}
+      />}
+    </div>
+  )
+}
+
+function AISettingsModal({ currentSettings, onSave, onClose }: {
+  currentSettings: AISettings | null
+  onSave: (settings: AISettings) => void
+  onClose: () => void
+}) {
+  const [provider, setProvider] = useState<'stability' | 'openai'>(currentSettings?.provider || 'stability')
+  const [apiKey, setApiKey] = useState(currentSettings?.apiKey || '')
+  const [style, setStyle] = useState(currentSettings?.style || 'comic book')
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!apiKey.trim()) {
+      alert('Please enter an API key')
+      return
+    }
+    onSave({ provider, apiKey: apiKey.trim(), style: style.trim() })
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <h2>AI Settings</h2>
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>AI Provider</label>
+            <select value={provider} onChange={(e) => setProvider(e.target.value as 'stability' | 'openai')}>
+              <option value="stability">Stability AI (Recommended)</option>
+              <option value="openai">OpenAI (DALL-E 3)</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label>API Key</label>
+            <input
+              type="password"
+              placeholder={provider === 'stability' ? 'sk-...' : 'sk-...'}
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              autoFocus
+            />
+            <small>
+              {provider === 'stability' ? (
+                <>Get your key at <a href="https://platform.stability.ai" target="_blank" rel="noopener noreferrer">platform.stability.ai</a></>
+              ) : (
+                <>Get your key at <a href="https://platform.openai.com" target="_blank" rel="noopener noreferrer">platform.openai.com</a></>
+              )}
+            </small>
+          </div>
+
+          <div className="form-group">
+            <label>Style Prefix (Optional)</label>
+            <input
+              type="text"
+              placeholder="e.g., comic book, manga, watercolor"
+              value={style}
+              onChange={(e) => setStyle(e.target.value)}
+            />
+            <small>Add a style prefix to all prompts (e.g., "manga style comic panel")</small>
+          </div>
+
+          <div className="modal-actions">
+            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-primary">Save Settings</button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }

@@ -1,55 +1,25 @@
 import React, { useState, useEffect } from 'react'
 import { parse } from './parser'
+import { parseNatural } from './naturalParser'
 import { ComicPreview } from './ComicPreview'
+import { GenerationStatus } from './ProgressBar'
 import { saveComic, loadComics, updateComic, deleteComic, SavedComic } from './supabase'
 import { generatePanelImage, saveAISettings, loadAISettings, AISettings } from './ai'
 import type { Comic } from './types'
 
-const EXAMPLE_SCRIPT = `---
-title: Hero's Journey
-style: manga
----
+const EXAMPLE_STORY = `Hero's Journey
 
-# Page 1
+A lone hero stands on a cliff overlooking a burning city. He says "I can't believe they're gone..." WHOOSH! The wind howls.
 
-A lone hero stands on a cliff overlooking a burning city
+Close-up of the hero's determined face. He shouts "I will find whoever did this!"
 
-HERO
-I can't believe they're gone...
+Meanwhile, the hero walks down a dusty road at sunset. He thinks "Where do I even begin?"
 
-*WHOOOOSH*
-
----
-
-Close-up of the hero's determined face
-
-HERO (angry)
-I will find whoever did this!
-
-> The wind carries the ashes of what was once home.
-
-# Page 2
-
-The hero walks down a dusty road at sunset
-
-HERO (thinking)
-Where do I even begin?
-
----
-
-A mysterious figure appears from the shadows
-
-STRANGER
-Looking for answers?
-
-HERO (surprised)
-Who are you?!
-
-*CRACK*
+Suddenly, a mysterious figure appears from the shadows. The stranger asks "Looking for answers?" The hero replies "Who are you?!" CRACK!
 `
 
 export default function App() {
-  const [script, setScript] = useState(EXAMPLE_SCRIPT)
+  const [script, setScript] = useState(EXAMPLE_STORY)
   const [currentComicId, setCurrentComicId] = useState<string | null>(null)
   const [savedComics, setSavedComics] = useState<SavedComic[]>([])
   const [showLoadModal, setShowLoadModal] = useState(false)
@@ -63,9 +33,12 @@ export default function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [aiSettings, setAISettings] = useState<AISettings | null>(() => loadAISettings())
   const [generatingAll, setGeneratingAll] = useState(false)
+  const [currentGenerating, setCurrentGenerating] = useState(0)
+  const [totalToGenerate, setTotalToGenerate] = useState(0)
   const [comic, setComic] = useState<Comic | null>(null)
 
-  const result = parse(script)
+  // Parse using natural language parser
+  const result = parseNatural(script)
 
   // Update comic state when script changes
   useEffect(() => {
@@ -155,7 +128,7 @@ export default function App() {
   }
 
   const handleNewComic = () => {
-    setScript(EXAMPLE_SCRIPT)
+    setScript(EXAMPLE_STORY)
     setCurrentComicId(null)
     setSaveTitle('')
     setMessage({ type: 'success', text: 'Started new comic' })
@@ -224,7 +197,23 @@ export default function App() {
 
     if (!comic) return
 
+    // Count total panels to generate
+    let totalPanels = 0
+    for (const page of comic.pages) {
+      for (const panel of page.panels) {
+        if (!panel.imageUrl) totalPanels++
+      }
+    }
+
+    if (totalPanels === 0) {
+      setMessage({ type: 'success', text: 'All panels already have images!' })
+      return
+    }
+
     setGeneratingAll(true)
+    setTotalToGenerate(totalPanels)
+    setCurrentGenerating(0)
+
     let successCount = 0
     let failCount = 0
 
@@ -234,6 +223,8 @@ export default function App() {
 
         // Skip panels that already have images
         if (panel.imageUrl) continue
+
+        setCurrentGenerating(successCount + failCount + 1)
 
         try {
           const imageUrl = await generatePanelImage(panel, aiSettings)
@@ -252,9 +243,11 @@ export default function App() {
     }
 
     setGeneratingAll(false)
+    setCurrentGenerating(0)
+    setTotalToGenerate(0)
 
     if (failCount === 0) {
-      setMessage({ type: 'success', text: `Generated ${successCount} panels!` })
+      setMessage({ type: 'success', text: `✅ Generated ${successCount} panels!` })
     } else {
       setMessage({ type: 'error', text: `Generated ${successCount} panels, ${failCount} failed` })
     }
@@ -291,25 +284,33 @@ export default function App() {
           {message.text}
         </div>
       )}
-      
+
+      {generatingAll && (
+        <GenerationStatus
+          isGenerating={generatingAll}
+          currentPanel={currentGenerating}
+          totalPanels={totalToGenerate}
+        />
+      )}
+
       <div className="editor-pane">
         <div className="editor-header">
           Script Editor
           {currentComicId && <span className="current-doc">Editing: {saveTitle}</span>}
         </div>
         <div className="syntax-guide">
-          <strong>Quick Guide:</strong>
-          <span><code># Page 1</code> starts a page</span> •
-          <span><code>---</code> separates panels (must be on its own line)</span> •
-          <span><code>CHARACTER</code> then dialogue on next line</span> •
-          <span><code>*SFX*</code> sound effects</span> •
-          <span><code>&gt; text</code> narration</span>
+          <strong>✍️ Write naturally:</strong>
+          <span>Start with your title</span> •
+          <span>Describe scenes in plain English</span> •
+          <span>Write dialogue like: He says "Hello"</span> •
+          <span>Use CAPS for sound effects</span> •
+          <span>Use "Meanwhile" or "Suddenly" to break scenes</span>
         </div>
         <div className="editor">
           <textarea
             value={script}
             onChange={(e) => setScript(e.target.value)}
-            placeholder="Write your comic script here..."
+            placeholder="Write your comic story naturally... Start with a title, then describe scenes and dialogue in plain English."
             spellCheck={false}
           />
         </div>

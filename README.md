@@ -1,150 +1,51 @@
 # ComicMaker
 
-A rapid comic creation tool with a markdown-like DSL. Write scripts, generate AI images, publish comics.
+Write comics in markdown. Generate images with AI.
 
-## What is this?
+## Quick Start
 
-ComicMaker lets you create comics by writing simple text scripts. No drawing skills required—describe your panels in plain English and let AI generate the artwork.
+```bash
+git clone <repo-url>
+cd comicmaker
+npm install
+
+# Parse and validate a comic
+npm run validate src/examples/simple.md
+
+# Render to HTML preview (no AI needed)
+npm run render src/examples/simple.md comic.html
+open comic.html
+
+# Generate AI images (requires API key)
+REPLICATE_API_TOKEN=r8_xxx npm run generate src/examples/simple.md
+```
+
+## DSL Syntax
 
 ```markdown
 ---
-title: My First Comic
+title: My Comic
+author: Your Name
 style: manga
 ---
 
 # Page 1
 
-A hero standing on a rooftop at sunset
+A cat sitting on a sunny windowsill
 
-HERO
-The city needs me.
-
----
-
-Close-up of hero's determined face
-
-HERO (determined)
-Time to go to work.
-
-*WHOOSH*
-```
-
-That's it. The DSL parses your script, generates panel images via AI, and renders a complete comic page.
-
-## Quick Start
-
-```bash
-# Clone and install
-git clone https://github.com/your-org/comicmaker.git
-cd comicmaker
-npm install
-
-# Set up your AI provider (pick one)
-cp .env.example .env
-# Edit .env with your API key
-
-# Run development server
-npm run dev
-```
-
-Open `http://localhost:3000` and start writing.
-
-## AI Provider Setup
-
-ComicMaker supports multiple AI image generation backends. Pick whichever works for you.
-
-### Option 1: Replicate (Recommended)
-
-Cheapest option. ~$0.003 per image. No GPU required.
-
-1. Sign up at [replicate.com](https://replicate.com)
-2. Get your API token from Settings
-3. Add to `.env`:
-
-```env
-AI_PROVIDER=replicate
-REPLICATE_API_TOKEN=r8_your_token_here
-```
-
-### Option 2: Stability AI
-
-Direct Stable Diffusion access. Credit-based pricing.
-
-1. Sign up at [platform.stability.ai](https://platform.stability.ai)
-2. Get your API key
-3. Add to `.env`:
-
-```env
-AI_PROVIDER=stability
-STABILITY_API_KEY=sk-your_key_here
-```
-
-### Option 3: Self-Hosted (Free but requires GPU)
-
-Run Stable Diffusion locally. Needs a decent GPU (8GB+ VRAM).
-
-**With Docker:**
-
-```bash
-# Pull the image (first run downloads ~10GB of models)
-docker run -d \
-  --gpus all \
-  -p 7860:7860 \
-  --name sd-webui \
-  ghcr.io/automatic1111/stable-diffusion-webui:latest
-
-# Wait for it to start (check logs)
-docker logs -f sd-webui
-```
-
-**Configure ComicMaker:**
-
-```env
-AI_PROVIDER=local
-AI_ENDPOINT=http://localhost:7860/api/v1
-```
-
-**Manual install** (if you hate Docker):
-
-```bash
-# Clone Automatic1111's WebUI
-git clone https://github.com/AUTOMATIC1111/stable-diffusion-webui.git
-cd stable-diffusion-webui
-
-# Run with API enabled
-./webui.sh --api
-```
-
-## DSL Syntax
-
-The comic DSL is designed to be readable and writable without documentation. If it looks like a comic script, it probably works.
-
-### Basic Structure
-
-```markdown
----
-title: Comic Title
-author: Your Name
-style: manga | superhero | cartoon | webcomic
----
-
-# Page 1
-
-Panel description here
-
-CHARACTER NAME
-Dialogue goes here.
+CAT
+Hello, world!
 
 ---
 
-Next panel description
+The cat stretching and yawning
 
-ANOTHER CHARACTER (emotion)
-More dialogue!
+CAT (happy)
+What a beautiful day.
 
-*SOUND EFFECT*
+*YAWN*
 
-> Narration box text
+> Life was good for this little cat.
 ```
 
 ### Elements
@@ -152,183 +53,133 @@ More dialogue!
 | Element | Syntax | Example |
 |---------|--------|---------|
 | Page | `# Page N` | `# Page 1` |
-| Panel | Text followed by `---` | See above |
+| Panel separator | `---` | |
 | Layout | `[preset]` | `[2x2]`, `[splash]` |
-| Dialogue | `NAME` + newline + text | `HERO`<br>`Hello!` |
-| Emotion | `(emotion)` after name | `HERO (angry)` |
-| Shout | `!` in dialogue | `Watch out!` |
-| Whisper | `*wrapped text*` | `*psst*` |
-| Sound FX | `*CAPS*` | `*BOOM*` |
+| Dialogue | `NAME` then text | `CAT`<br>`Hello!` |
+| Emotion | `(emotion)` | `CAT (happy)` |
+| Sound effect | `*TEXT*` | `*BOOM*` |
 | Narration | `> text` | `> Meanwhile...` |
-| Thought | `~ text` | `~ I wonder...` |
-| Comment | `// text` | `// fix this later` |
+| Comment | `// text` | `// todo` |
 
-### Layout Presets
+### Styles
 
-- `[single]` or `[splash]` - Full page, one panel
-- `[2x1]` - Two panels stacked
-- `[1x2]` - Two panels side by side
-- `[2x2]` - Four equal panels
-- `[3x3]` - Nine panels (Watchmen style)
-- `[rows: 2, 1]` - Custom: 2 panels top row, 1 full-width bottom
+`manga` · `superhero` · `cartoon` · `webcomic` · `noir` · `chibi`
+
+### Layouts
+
+`single` · `splash` · `1x2` · `2x1` · `2x2` · `3x3`
 
 ### Emotions
 
-Use these in parentheses after character names to affect both speech balloon style and AI image generation:
+`neutral` · `happy` · `sad` · `angry` · `surprised` · `scared` · `excited`
 
-`neutral`, `happy`, `sad`, `angry`, `surprised`, `scared`, `confused`, `excited`
+## Commands
 
-### Style Presets
+```bash
+npm run parse <file>      # Parse DSL to JSON
+npm run validate <file>   # Parse + validate against schema
+npm run render <file>     # Generate HTML preview
+npm run generate <file>   # Generate AI images (needs API key)
+npm test                  # Run test suite
+npm run typecheck         # TypeScript check
+```
 
-Set in frontmatter to change the overall look:
+## AI Setup
 
-- `manga` - Anime/manga aesthetic
-- `superhero` - Bold American comic style
-- `cartoon` - Simple, clean lines
-- `webcomic` - Modern digital style
-- `noir` - Dark, high contrast
-- `chibi` - Cute, super-deformed
+### Replicate (recommended)
 
-## Project Structure
+1. Get API token at [replicate.com](https://replicate.com)
+2. Run with token:
+
+```bash
+REPLICATE_API_TOKEN=r8_xxx npm run generate src/examples/simple.md
+```
+
+Cost: ~$0.003/image using SDXL.
+
+## Architecture
 
 ```
-comicmaker/
-├── research/              # Design research (you are here)
-│   └── comic-conventions-and-ux.md
-├── src/
-│   ├── parser/           # DSL → data model
-│   ├── renderer/         # Data model → visual
-│   ├── services/         # AI integration
-│   └── types/            # TypeScript definitions
-├── public/
-└── tests/
+src/
+├── schema/
+│   ├── comic.schema.json   # JSON Schema (source of truth)
+│   └── types.ts            # TypeScript types
+├── parser/
+│   ├── parse.ts            # DSL text → Comic object
+│   └── validate.ts         # Schema validation (AJV)
+├── services/
+│   └── generate.ts         # Replicate API integration
+├── render/
+│   └── html.ts             # Comic → standalone HTML
+├── examples/
+│   └── simple.md           # Example comic
+└── index.ts                # Public exports
+```
+
+**Data flow:** DSL text → `parse()` → Comic JSON → `validate()` → `generate()` / `renderToHtml()`
+
+## Schema
+
+JSON Schema at `src/schema/comic.schema.json` defines:
+
+```
+Comic
+├── title (required)
+├── author
+├── style
+└── pages[] (required)
+    ├── layout
+    └── panels[]
+        ├── description (required)
+        ├── dialogue[]
+        │   ├── character
+        │   ├── text
+        │   ├── emotion
+        │   └── style (normal|shout|whisper|thought)
+        ├── narration
+        ├── sfx[]
+        │   ├── text
+        │   └── intensity
+        └── image (populated by generate)
 ```
 
 ## Development
 
 ```bash
-# Install dependencies
 npm install
-
-# Run dev server
-npm run dev
-
-# Run tests
-npm test
-
-# Type check
-npm run typecheck
-
-# Lint
-npm run lint
-
-# Build for production
-npm run build
+npm test          # 3 tests
+npm run typecheck # No errors
 ```
 
-## Testing the DSL Parser
+### Testing the parser
 
 ```bash
-# Parse a comic file
-npm run parse examples/simple.md
-
-# Validate without generating
-npm run validate examples/simple.md
-
-# Generate with AI (requires API key)
-npm run generate examples/simple.md --output ./output
-```
-
-### Quick Test Script
-
-```bash
-# Create a test comic
-cat > /tmp/test.md << 'EOF'
----
+# Quick test
+echo '---
 title: Test
 ---
 
 # Page 1
 
-A cat sitting on a fence
+A dog
 
-CAT
-Meow.
-EOF
-
-# Parse and validate
-npm run validate /tmp/test.md
+DOG
+Woof!' | npm run parse /dev/stdin
 ```
 
-## Configuration
+## Existing Tools We Leverage
 
-### Environment Variables
+- **[AI Comic Factory](https://github.com/jbilcke-hf/ai-comic-factory)** - Open source reference for LLM+SDXL comic generation
+- **[Replicate](https://replicate.com)** - Cheapest AI image API (~$0.003/image)
+- **[AJV](https://ajv.js.org)** - JSON Schema validation
 
-```env
-# Required: AI provider
-AI_PROVIDER=replicate|stability|openai|local
+## Future
 
-# Provider-specific keys
-REPLICATE_API_TOKEN=r8_xxx
-STABILITY_API_KEY=sk-xxx
-OPENAI_API_KEY=sk-xxx
-
-# For self-hosted
-AI_ENDPOINT=http://localhost:7860/api/v1
-
-# Optional settings
-DEFAULT_STYLE=manga
-DEFAULT_IMAGE_WIDTH=1024
-DEFAULT_IMAGE_HEIGHT=1024
-MAX_CONCURRENT_GENERATIONS=3
-```
-
-### Config File
-
-Create `comicmaker.config.js` for project-level settings:
-
-```javascript
-module.exports = {
-  defaultStyle: 'manga',
-  imageSize: { width: 1024, height: 1024 },
-  outputDir: './output',
-  exportFormats: ['png', 'pdf'],
-};
-```
-
-## Troubleshooting
-
-**Parser errors?**
-- Check your frontmatter has `---` on its own lines
-- Make sure panel separators are `---` with blank lines around them
-- Character names need to be ALL CAPS
-
-**AI generation failing?**
-- Verify your API key is set correctly
-- Check you have credits/quota remaining
-- For self-hosted: make sure the API endpoint is accessible
-
-**Slow generation?**
-- Reduce image size in config
-- Use a faster model (trade quality for speed)
-- For self-hosted: get a better GPU
-
-**Images look wrong?**
-- Try different style presets
-- Add more detail to panel descriptions
-- Experiment with the `customPrompt` field in frontmatter
-
-## Contributing
-
-PRs welcome. Please:
-1. Write tests for new features
-2. Follow existing code style
-3. Update docs if needed
+- [ ] Web UI with live preview
+- [ ] More AI providers (Stability, local SD)
+- [ ] PDF export
+- [ ] Character consistency (IP-Adapter)
 
 ## License
 
 MIT
-
----
-
-Built because drawing is hard but storytelling shouldn't be.

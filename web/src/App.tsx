@@ -173,6 +173,14 @@ export default function App() {
           Script Editor
           {currentComicId && <span className="current-doc">Editing: {saveTitle}</span>}
         </div>
+        <div className="syntax-guide">
+          <strong>Quick Guide:</strong>
+          <span><code># Page 1</code> starts a page</span> •
+          <span><code>---</code> separates panels (must be on its own line)</span> •
+          <span><code>CHARACTER</code> then dialogue on next line</span> •
+          <span><code>*SFX*</code> sound effects</span> •
+          <span><code>&gt; text</code> narration</span>
+        </div>
         <div className="editor">
           <textarea
             value={script}

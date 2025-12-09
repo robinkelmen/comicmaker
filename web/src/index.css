@@ -85,6 +85,32 @@ body {
   color: #888;
 }
 
+.syntax-guide {
+  padding: 8px 16px;
+  background: #0f0f0f;
+  border-bottom: 1px solid #333;
+  font-size: 0.75rem;
+  color: #888;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.syntax-guide strong {
+  color: #3b82f6;
+  margin-right: 4px;
+}
+
+.syntax-guide code {
+  background: #1a1a1a;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  color: #22c55e;
+  font-size: 0.7rem;
+}
+
 .editor {
   flex: 1;
   padding: 16px;

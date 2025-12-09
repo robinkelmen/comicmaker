@@ -1,4 +1,3 @@
-import React from 'react'
 import type { Comic, Panel, Dialogue, SoundEffect, Narration, PanelElement } from './types'
 
 interface Props {

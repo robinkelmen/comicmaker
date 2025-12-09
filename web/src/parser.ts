@@ -1,4 +1,4 @@
-import type { Comic, Page, Panel, PanelElement, Dialogue, SoundEffect, Narration, Style, Emotion, DialogueStyle } from './types'
+import type { Comic, Page, Panel, PanelElement, Style, Emotion, DialogueStyle } from './types'
 
 interface ParseSuccess {
   ok: true
@@ -12,12 +12,10 @@ interface ParseError {
 
 type ParseResult = ParseSuccess | ParseError
 
-const STYLES: Style[] = ['manga', 'superhero', 'cartoon', 'webcomic', 'noir', 'chibi']
 const EMOTIONS: Emotion[] = ['neutral', 'happy', 'sad', 'angry', 'surprised', 'scared', 'excited', 'thinking']
 
 export function parse(input: string): ParseResult {
   const lines = input.split('\n')
-  const errors: string[] = []
 
   const { frontmatter, bodyStart } = parseFrontmatter(lines)
   
@@ -25,14 +23,10 @@ export function parse(input: string): ParseResult {
     frontmatter.title = 'Untitled Comic'
   }
 
-  const pages = parsePages(lines.slice(bodyStart), errors)
+  const pages = parsePages(lines.slice(bodyStart))
 
   if (pages.length === 0) {
-    errors.push('No pages found. Start a page with # Page 1')
-  }
-
-  if (errors.length > 0) {
-    return { ok: false, errors }
+    return { ok: false, errors: ['No pages found. Start a page with # Page 1'] }
   }
 
   return {
@@ -73,7 +67,7 @@ function parseFrontmatter(lines: string[]): { frontmatter: Record<string, string
   return { frontmatter, bodyStart }
 }
 
-function parsePages(lines: string[], errors: string[]): Page[] {
+function parsePages(lines: string[]): Page[] {
   const pages: Page[] = []
   let currentPage: Page | null = null
   let currentPanel: Panel | null = null

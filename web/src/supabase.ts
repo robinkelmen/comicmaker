@@ -1,13 +1,17 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-if (!supabaseUrl || !supabaseAnonKey) {
+const hasCredentials = supabaseUrl && supabaseAnonKey
+
+if (!hasCredentials) {
   console.warn('Supabase credentials not configured. Save/load features will be disabled.')
 }
 
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '')
+export const supabase: SupabaseClient | null = hasCredentials
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null
 
 export interface SavedComic {
   id: string
@@ -18,6 +22,10 @@ export interface SavedComic {
 }
 
 export async function saveComic(title: string, script: string): Promise<{ data: SavedComic | null; error: string | null }> {
+  if (!supabase) {
+    return { data: null, error: 'Supabase not configured' }
+  }
+
   const { data, error } = await supabase
     .from('comics')
     .insert({ title, script })
@@ -31,6 +39,10 @@ export async function saveComic(title: string, script: string): Promise<{ data: 
 }
 
 export async function loadComics(): Promise<{ data: SavedComic[] | null; error: string | null }> {
+  if (!supabase) {
+    return { data: null, error: 'Supabase not configured' }
+  }
+
   const { data, error } = await supabase
     .from('comics')
     .select('*')
@@ -43,6 +55,10 @@ export async function loadComics(): Promise<{ data: SavedComic[] | null; error: 
 }
 
 export async function loadComic(id: string): Promise<{ data: SavedComic | null; error: string | null }> {
+  if (!supabase) {
+    return { data: null, error: 'Supabase not configured' }
+  }
+
   const { data, error } = await supabase
     .from('comics')
     .select('*')
@@ -56,6 +72,10 @@ export async function loadComic(id: string): Promise<{ data: SavedComic | null; 
 }
 
 export async function updateComic(id: string, title: string, script: string): Promise<{ data: SavedComic | null; error: string | null }> {
+  if (!supabase) {
+    return { data: null, error: 'Supabase not configured' }
+  }
+
   const { data, error } = await supabase
     .from('comics')
     .update({ title, script, updated_at: new Date().toISOString() })
@@ -70,6 +90,10 @@ export async function updateComic(id: string, title: string, script: string): Pr
 }
 
 export async function deleteComic(id: string): Promise<{ error: string | null }> {
+  if (!supabase) {
+    return { error: 'Supabase not configured' }
+  }
+
   const { error } = await supabase
     .from('comics')
     .delete()

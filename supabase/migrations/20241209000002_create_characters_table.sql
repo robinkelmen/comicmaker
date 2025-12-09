@@ -18,6 +18,16 @@ ALTER TABLE public.characters ENABLE ROW LEVEL SECURITY;
 -- Create policies for public access
 -- Note: Adjust these for production use with authentication
 
+-- Drop existing policies if they exist
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Allow public read access" ON public.characters;
+  DROP POLICY IF EXISTS "Allow public insert access" ON public.characters;
+  DROP POLICY IF EXISTS "Allow public update access" ON public.characters;
+  DROP POLICY IF EXISTS "Allow public delete access" ON public.characters;
+EXCEPTION
+  WHEN undefined_object THEN NULL;
+END $$;
+
 -- Allow anyone to read all characters
 CREATE POLICY "Allow public read access"
   ON public.characters

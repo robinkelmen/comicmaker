@@ -16,6 +16,16 @@ ALTER TABLE public.comics ENABLE ROW LEVEL SECURITY;
 -- Create policies for public access
 -- Note: These allow anyone to CRUD comics. Adjust for production use.
 
+-- Drop existing policies if they exist
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Allow public read access" ON public.comics;
+  DROP POLICY IF EXISTS "Allow public insert access" ON public.comics;
+  DROP POLICY IF EXISTS "Allow public update access" ON public.comics;
+  DROP POLICY IF EXISTS "Allow public delete access" ON public.comics;
+EXCEPTION
+  WHEN undefined_object THEN NULL;
+END $$;
+
 -- Allow anyone to read all comics
 CREATE POLICY "Allow public read access"
   ON public.comics

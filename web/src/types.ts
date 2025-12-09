@@ -20,6 +20,8 @@ export interface Page {
 export interface Panel {
   scene?: string
   elements: PanelElement[]
+  imageUrl?: string
+  generating?: boolean
 }
 
 export type PanelElement = Dialogue | SoundEffect | Narration

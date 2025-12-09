@@ -44,6 +44,9 @@ const SCENE_BREAKS = [
   'panel break',
 ]
 
+// Explicit panel markers (case-insensitive)
+const PANEL_START_MARKER = /\[NEW\s+PANEL\]/i
+
 export function parseNatural(text: string): ParseResult {
   const errors: string[] = []
 
@@ -139,14 +142,19 @@ function extractPanels(story: string): Panel[] {
 function splitIntoSegments(text: string): string[] {
   const segments: string[] = []
 
-  // Split by double newlines (paragraphs) or explicit breaks
+  // First, check for explicit [NEW PANEL] markers
+  if (PANEL_START_MARKER.test(text)) {
+    return extractExplicitPanels(text)
+  }
+
+  // Otherwise, use automatic segmentation
   let current = ''
   const lines = text.split('\n')
 
   for (const line of lines) {
     const trimmed = line.trim()
 
-    // Check for explicit scene break
+    // Check for explicit scene break keywords
     const isBreak = SCENE_BREAKS.some(marker =>
       trimmed.toLowerCase().includes(marker)
     )
@@ -167,6 +175,22 @@ function splitIntoSegments(text: string): string[] {
   }
 
   return segments
+}
+
+function extractExplicitPanels(text: string): string[] {
+  const segments: string[] = []
+  const panelRegex = /\[NEW\s+PANEL\](.*?)(?:\[(?:END\s+PANEL|\/PANEL)\]|(?=\[NEW\s+PANEL\])|$)/gis
+
+  let match
+  while ((match = panelRegex.exec(text)) !== null) {
+    const content = match[1].trim()
+    if (content) {
+      segments.push(content)
+    }
+  }
+
+  // If no matches found, return original text as single segment
+  return segments.length > 0 ? segments : [text]
 }
 
 function parseSegment(segment: string): Panel {

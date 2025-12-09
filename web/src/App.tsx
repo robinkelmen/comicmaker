@@ -156,34 +156,70 @@ export default function App() {
 
     if (!comic) return
 
-    // Set panel as generating
-    const updatedComic = { ...comic }
-    updatedComic.pages[pageIndex].panels[panelIndex].generating = true
-    setComic(updatedComic)
+    // Set panel as generating with proper immutability
+    setComic({
+      ...comic,
+      pages: comic.pages.map((page, pIdx) =>
+        pIdx === pageIndex
+          ? {
+              ...page,
+              panels: page.panels.map((panel, panIdx) =>
+                panIdx === panelIndex
+                  ? { ...panel, generating: true }
+                  : panel
+              )
+            }
+          : page
+      )
+    })
 
     try {
       const panel = comic.pages[pageIndex].panels[panelIndex]
       const imageUrl = await generatePanelImage(panel, aiSettings)
 
       // Update panel with generated image
-      const finalComic = { ...comic }
-      finalComic.pages[pageIndex].panels[panelIndex].imageUrl = imageUrl
-      finalComic.pages[pageIndex].panels[panelIndex].generating = false
+      const finalComic: Comic = {
+        ...comic,
+        pages: comic.pages.map((page, pIdx) =>
+          pIdx === pageIndex
+            ? {
+                ...page,
+                panels: page.panels.map((panel, panIdx) =>
+                  panIdx === panelIndex
+                    ? { ...panel, imageUrl, generating: false }
+                    : panel
+                )
+              }
+            : page
+        )
+      }
       setComic(finalComic)
 
       setMessage({ type: 'success', text: 'Panel generated!' })
 
       // Auto-save if comic is already saved
       if (currentComicId) {
-        await updateComic(currentComicId, saveTitle, script, comic || undefined)
+        await updateComic(currentComicId, saveTitle, script, finalComic)
       }
     } catch (error) {
       setMessage({ type: 'error', text: `Generation failed: ${error}` })
 
       // Clear generating state
-      const errorComic = { ...comic }
-      errorComic.pages[pageIndex].panels[panelIndex].generating = false
-      setComic(errorComic)
+      setComic({
+        ...comic,
+        pages: comic.pages.map((page, pIdx) =>
+          pIdx === pageIndex
+            ? {
+                ...page,
+                panels: page.panels.map((panel, panIdx) =>
+                  panIdx === panelIndex
+                    ? { ...panel, generating: false }
+                    : panel
+                )
+              }
+            : page
+        )
+      })
     }
   }
 
@@ -215,10 +251,11 @@ export default function App() {
 
     let successCount = 0
     let failCount = 0
+    let workingComic = comic
 
-    for (let pageIndex = 0; pageIndex < comic.pages.length; pageIndex++) {
-      for (let panelIndex = 0; panelIndex < comic.pages[pageIndex].panels.length; panelIndex++) {
-        const panel = comic.pages[pageIndex].panels[panelIndex]
+    for (let pageIndex = 0; pageIndex < workingComic.pages.length; pageIndex++) {
+      for (let panelIndex = 0; panelIndex < workingComic.pages[pageIndex].panels.length; panelIndex++) {
+        const panel = workingComic.pages[pageIndex].panels[panelIndex]
 
         // Skip panels that already have images
         if (panel.imageUrl) continue
@@ -228,10 +265,23 @@ export default function App() {
         try {
           const imageUrl = await generatePanelImage(panel, aiSettings)
 
-          // Update panel with generated image
-          const updatedComic = { ...comic }
-          updatedComic.pages[pageIndex].panels[panelIndex].imageUrl = imageUrl
-          setComic(updatedComic)
+          // Update panel with generated image immutably
+          workingComic = {
+            ...workingComic,
+            pages: workingComic.pages.map((page, pIdx) =>
+              pIdx === pageIndex
+                ? {
+                    ...page,
+                    panels: page.panels.map((p, panIdx) =>
+                      panIdx === panelIndex
+                        ? { ...p, imageUrl }
+                        : p
+                    )
+                  }
+                : page
+            )
+          }
+          setComic(workingComic)
 
           successCount++
         } catch (error) {
@@ -303,7 +353,8 @@ export default function App() {
           <span>Describe scenes in plain English</span> •
           <span>Write dialogue like: He says "Hello"</span> •
           <span>Use CAPS for sound effects</span> •
-          <span>Use "Meanwhile" or "Suddenly" to break scenes</span>
+          <span>Use "Meanwhile" or "Suddenly" to break scenes</span> •
+          <span>Or use <code>[NEW PANEL]</code> for explicit control</span>
         </div>
         <div className="editor">
           <textarea

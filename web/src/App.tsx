@@ -43,9 +43,15 @@ export default function App() {
   // Update comic state when script changes
   useEffect(() => {
     if (result.ok) {
-      setComic(result.comic)
+      setComic(prev => {
+        // Preserve generated content when script changes
+        if (prev?.pageBackgroundUrl) {
+          return { ...result.comic, pageBackgroundUrl: prev.pageBackgroundUrl }
+        }
+        return result.comic
+      })
     }
-  }, [result])
+  }, [script, result.ok])
 
   useEffect(() => {
     if (message) {

@@ -44,37 +44,30 @@ function PanelView({ panel, onGenerate, generating }: {
   onGenerate?: () => void
   generating?: boolean
 }) {
+  const panelStyle = panel.imageUrl
+    ? {
+        backgroundImage: `url(${panel.imageUrl})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }
+    : {}
+
   return (
-    <div className="panel">
-      {panel.imageUrl ? (
-        <div className="panel-image-container">
-          <img src={panel.imageUrl} alt="Generated panel" className="panel-image" />
-          {onGenerate && (
-            <button
-              className="btn btn-regenerate"
-              onClick={onGenerate}
-              disabled={generating}
-            >
-              🔄 Regenerate
-            </button>
-          )}
-        </div>
-      ) : (
-        <>
-          {panel.scene && <div className="panel-scene">{panel.scene}</div>}
-          {panel.elements.map((element, i) => (
-            <ElementView key={i} element={element} />
-          ))}
-          {onGenerate && (
-            <button
-              className="btn btn-generate"
-              onClick={onGenerate}
-              disabled={generating || panel.generating}
-            >
-              {panel.generating ? '⏳ Generating...' : '🎨 Generate Image'}
-            </button>
-          )}
-        </>
+    <div className="panel" style={panelStyle}>
+      <div className="panel-content">
+        {panel.scene && !panel.imageUrl && <div className="panel-scene">{panel.scene}</div>}
+        {panel.elements.map((element, i) => (
+          <ElementView key={i} element={element} />
+        ))}
+      </div>
+      {onGenerate && (
+        <button
+          className={`btn ${panel.imageUrl ? 'btn-regenerate' : 'btn-generate'}`}
+          onClick={onGenerate}
+          disabled={generating || panel.generating}
+        >
+          {panel.generating ? '⏳ Generating...' : panel.imageUrl ? '🔄 Regenerate' : '🎨 Generate Image'}
+        </button>
       )}
     </div>
   )

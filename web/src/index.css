@@ -136,6 +136,10 @@ body {
   flex-direction: column;
 }
 
+.preview-pane.preview-fullscreen {
+  grid-column: 1 / -1;
+}
+
 .preview {
   flex: 1;
   padding: 20px;

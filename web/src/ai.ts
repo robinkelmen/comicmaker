@@ -131,3 +131,22 @@ export function loadAISettings(): AISettings | null {
   const saved = localStorage.getItem('ai_settings')
   return saved ? JSON.parse(saved) : null
 }
+
+export async function generatePageBackground(
+  title: string,
+  style: string,
+  settings: AISettings
+): Promise<string> {
+  if (!settings.apiKey) {
+    throw new Error('API key is required')
+  }
+
+  // Build prompt for page background
+  const prompt = `${settings.style || style || 'comic book'} style full page background for a comic book page, title: "${title}", textured paper, vintage comic aesthetic, blank space for panels, professional comic book layout`
+
+  if (settings.provider === 'stability') {
+    return generateWithStability(prompt, settings.apiKey)
+  } else {
+    return generateWithOpenAI(prompt, settings.apiKey)
+  }
+}

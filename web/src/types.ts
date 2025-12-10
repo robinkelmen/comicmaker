@@ -9,6 +9,7 @@ export interface Comic {
   author?: string
   style?: Style
   pages: Page[]
+  pageBackgroundUrl?: string
 }
 
 export interface Page {

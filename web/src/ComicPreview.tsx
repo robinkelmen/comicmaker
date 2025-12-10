@@ -14,8 +14,16 @@ export function ComicPreview({ comic, onGeneratePanel, generating }: Props) {
     return 'layout-3x3'
   }
 
+  const pageStyle = comic.pageBackgroundUrl
+    ? {
+        backgroundImage: `url(${comic.pageBackgroundUrl})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }
+    : {}
+
   return (
-    <div className="comic-page">
+    <div className="comic-page" style={pageStyle}>
       <h2 className="comic-title">{comic.title}</h2>
       {comic.author && <div className="comic-meta">by {comic.author}</div>}
       {comic.style && <div className="comic-meta">Style: {comic.style}</div>}

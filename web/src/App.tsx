@@ -3,7 +3,7 @@ import { parseNatural } from './naturalParser'
 import { ComicPreview } from './ComicPreview'
 import { GenerationStatus } from './ProgressBar'
 import { saveComic, loadComics, updateComic, deleteComic, SavedComic } from './supabase'
-import { generatePanelImage, saveAISettings, loadAISettings, AISettings } from './ai'
+import { generatePanelImage, generatePageBackground, saveAISettings, loadAISettings, AISettings } from './ai'
 import type { Comic } from './types'
 
 const EXAMPLE_STORY = `Hero's Journey
@@ -35,6 +35,7 @@ export default function App() {
   const [currentGenerating, setCurrentGenerating] = useState(0)
   const [totalToGenerate, setTotalToGenerate] = useState(0)
   const [comic, setComic] = useState<Comic | null>(null)
+  const [previewMode, setPreviewMode] = useState(false)
 
   // Parse using natural language parser
   const result = parseNatural(script)
@@ -223,6 +224,40 @@ export default function App() {
     }
   }
 
+  const handleGeneratePageBackground = async () => {
+    if (!aiSettings) {
+      setMessage({ type: 'error', text: 'Please configure AI settings first' })
+      setShowSettingsModal(true)
+      return
+    }
+
+    if (!comic) return
+
+    try {
+      setMessage({ type: 'success', text: 'Generating page background...' })
+      const pageBackgroundUrl = await generatePageBackground(
+        comic.title,
+        comic.style || 'cartoon',
+        aiSettings
+      )
+
+      const updatedComic: Comic = {
+        ...comic,
+        pageBackgroundUrl
+      }
+      setComic(updatedComic)
+
+      setMessage({ type: 'success', text: 'Page background generated!' })
+
+      // Auto-save if comic is already saved
+      if (currentComicId) {
+        await updateComic(currentComicId, saveTitle, script, updatedComic)
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: `Failed to generate background: ${error}` })
+    }
+  }
+
   const handleGenerateAll = async () => {
     if (!aiSettings) {
       setMessage({ type: 'error', text: 'Please configure AI settings first' })
@@ -319,11 +354,24 @@ export default function App() {
           <button className="btn btn-primary" onClick={openSaveModal}>Save</button>
           <button className="btn btn-secondary" onClick={() => setShowSettingsModal(true)}>⚙️ AI Settings</button>
           <button
+            className="btn btn-secondary"
+            onClick={handleGeneratePageBackground}
+            disabled={generatingAll || !result.ok}
+          >
+            🖼️ Generate Background
+          </button>
+          <button
             className="btn btn-primary"
             onClick={handleGenerateAll}
             disabled={generatingAll || !result.ok}
           >
             {generatingAll ? '⏳ Generating...' : '🎨 Generate All'}
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setPreviewMode(!previewMode)}
+          >
+            {previewMode ? '✏️ Editor' : '📖 Preview'}
           </button>
         </div>
       </header>
@@ -342,37 +390,39 @@ export default function App() {
         />
       )}
 
-      <div className="editor-pane">
-        <div className="editor-header">
-          Script Editor
-          {currentComicId && <span className="current-doc">Editing: {saveTitle}</span>}
+      {!previewMode && (
+        <div className="editor-pane">
+          <div className="editor-header">
+            Script Editor
+            {currentComicId && <span className="current-doc">Editing: {saveTitle}</span>}
+          </div>
+          <div className="syntax-guide">
+            <strong>✍️ Write naturally:</strong>
+            <span>Start with your title</span> •
+            <span>Describe scenes in plain English</span> •
+            <span>Write dialogue like: He says "Hello"</span> •
+            <span>Use CAPS for sound effects</span> •
+            <span>Use "Meanwhile" or "Suddenly" to break scenes</span> •
+            <span>Or use <code>[NEW PANEL]</code> for explicit control</span>
+          </div>
+          <div className="editor">
+            <textarea
+              value={script}
+              onChange={(e) => setScript(e.target.value)}
+              placeholder="Write your comic story naturally... Start with a title, then describe scenes and dialogue in plain English."
+              spellCheck={false}
+            />
+          </div>
         </div>
-        <div className="syntax-guide">
-          <strong>✍️ Write naturally:</strong>
-          <span>Start with your title</span> •
-          <span>Describe scenes in plain English</span> •
-          <span>Write dialogue like: He says "Hello"</span> •
-          <span>Use CAPS for sound effects</span> •
-          <span>Use "Meanwhile" or "Suddenly" to break scenes</span> •
-          <span>Or use <code>[NEW PANEL]</code> for explicit control</span>
-        </div>
-        <div className="editor">
-          <textarea
-            value={script}
-            onChange={(e) => setScript(e.target.value)}
-            placeholder="Write your comic story naturally... Start with a title, then describe scenes and dialogue in plain English."
-            spellCheck={false}
-          />
-        </div>
-      </div>
-      
-      <div className="preview-pane">
+      )}
+
+      <div className={`preview-pane ${previewMode ? 'preview-fullscreen' : ''}`}>
         <div className="editor-header">Preview</div>
         <div className="preview">
           {result.ok ? (
             <ComicPreview
               comic={comic || result.comic}
-              onGeneratePanel={handleGeneratePanel}
+              onGeneratePanel={previewMode ? undefined : handleGeneratePanel}
               generating={generatingAll}
             />
           ) : (

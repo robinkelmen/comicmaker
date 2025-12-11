@@ -1,0 +1,72 @@
+{
+  "fal-free": {
+    "name": "Free (FLUX)",
+    "icon": "⚡",
+    "color": "#10b981",
+    "cost": "Free",
+    "speed": "Fast",
+    "requiresKey": false,
+    "keyName": "",
+    "url": "https://queue.fal.run/fal-ai/flux/schnell",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "input": {
+        "prompt": "${prompt}",
+        "image_size": {
+          "width": 1024,
+          "height": 1024
+        }
+      }
+    },
+    "extract": "images.0.url"
+  },
+
+  "openai": {
+    "name": "DALL-E 3",
+    "icon": "🎨",
+    "color": "#10a37f",
+    "cost": "$0.04",
+    "speed": "Medium",
+    "requiresKey": true,
+    "keyName": "openai",
+    "url": "https://api.openai.com/v1/images/generations",
+    "headers": {
+      "Authorization": "Bearer ${apiKey}",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "model": "dall-e-3",
+      "prompt": "${prompt}",
+      "size": "1024x1024",
+      "quality": "standard"
+    },
+    "extract": "data.0.url"
+  },
+
+  "fal-pro": {
+    "name": "FLUX Pro",
+    "icon": "✨",
+    "color": "#8b5cf6",
+    "cost": "$0.025",
+    "speed": "Fast",
+    "requiresKey": true,
+    "keyName": "fal",
+    "url": "https://queue.fal.run/fal-ai/flux/dev",
+    "headers": {
+      "Authorization": "Key ${apiKey}",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "input": {
+        "prompt": "${prompt}",
+        "image_size": {
+          "width": 1024,
+          "height": 1024
+        }
+      }
+    },
+    "extract": "images.0.url"
+  }
+}

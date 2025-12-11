@@ -10,7 +10,9 @@
     "test:watch": "tsx watch tests/ai-pipeline.test.ts"
   },
   "dependencies": {
+    "@fal-ai/serverless-client": "^0.15.0",
     "@supabase/supabase-js": "^2.39.0",
+    "openai": "^6.10.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },

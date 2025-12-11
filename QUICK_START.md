@@ -1,24 +1,28 @@
 # Quick Start Guide: Testing Image Generation
 
-## Option 1: Free Tier (Test Right Now - $0)
+## Option 1: FAL.ai Free Tier (Fastest & Cheapest)
 
-1. Open your deployed app
-2. Click **"AI Settings"** button
-3. Select **"Free (FLUX)" ⚡**
-4. Close settings (no API key needed!)
-5. Generate your first comic panel
-6. **Cost to you: $0**
+FAL.ai offers generous free credits when you sign up - perfect for testing!
 
-The free tier uses FAL.ai FLUX Schnell which is:
-- Completely free
-- Fast (2-3 seconds)
-- Good quality
-- No registration or credit card needed
+1. **Sign up at https://fal.ai** (free account)
+2. **Get your API key** from the dashboard
+3. In your ComicMaker app:
+   - Click **"AI Settings"** button
+   - Select **"FLUX Schnell (FAL)" ⚡**
+   - Paste your FAL.ai API key
+4. Generate your first comic panel!
+
+### Why FAL.ai?
+- **Free credits** when you sign up
+- **Super fast** (2-3 seconds per image)
+- **Very affordable** after free tier (~$0.003 per image)
+- **Good quality** for comic panels
+- **Best for testing and production**
 
 ### Limits
-- Rate limited (but generous for testing)
-- Basic quality (still good!)
-- Perfect for MVP and testing
+- Free tier: Generous credits for testing
+- After free tier: ~$0.003 per image (333 images per $1)
+- Perfect for MVP and scaling
 
 ---
 

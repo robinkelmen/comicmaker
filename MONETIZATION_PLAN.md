@@ -37,9 +37,10 @@ interface ImageGenerationConfig {
 
 ## Phase 2: Freemium with Free Models
 
-### Free Tier (Cost: ~$0)
-- **Model**: FAL.ai FLUX Schnell (free)
-- **Limit**: 10 panels/day or 50/month
+### Free Tier (Cost: Very Low)
+- **Model**: FAL.ai FLUX Schnell (users get free credits when they sign up)
+- **Your cost**: Users bring their own FAL.ai key with free credits
+- **After free credits**: ~$0.003 per image (very affordable)
 - **Features**: Basic comic creation
 
 ### Pro Tier ($9.99/month)
@@ -72,12 +73,12 @@ interface ImageGenerationConfig {
 
 ## Free Models for Testing
 
-### 1. FAL.ai FLUX Schnell (FREE)
+### 1. FAL.ai FLUX Schnell (Recommended)
 ```bash
 # Install
 npm install @fal-ai/serverless-client
 
-# Example
+# Example (requires API key)
 const result = await fal.subscribe("fal-ai/flux/schnell", {
   input: {
     prompt: "A superhero in a dynamic action pose"
@@ -86,14 +87,15 @@ const result = await fal.subscribe("fal-ai/flux/schnell", {
 ```
 
 **Pros**:
-- Completely free
+- Free credits when you sign up
+- Very cheap after free tier (~$0.003/image = 333 images per $1)
 - Fast (2-3 seconds)
 - Good quality
-- No credit card
+- Great for production
 
 **Cons**:
-- Rate limits
-- Basic model
+- Requires account signup
+- Needs API key
 
 ### 2. Hugging Face Inference API (FREE)
 ```bash
@@ -198,16 +200,16 @@ export const IMAGE_PROVIDERS = {
 - **Revenue**: 100% from subscriptions/features
 - **User cost**: Their own API usage
 
-### With Free Tier (FAL.ai)
-- **Your cost**: $0 (FAL Schnell is free)
-- **Limit**: Rate limits may apply
-- **Scalability**: Limited but fine for MVP
+### With BYOK FAL.ai (Recommended)
+- **Your cost**: $0 (users bring their own keys)
+- **User cost**: Free credits initially, then ~$0.003/image
+- **Scalability**: Excellent - no limits for you
 
 ### Hybrid (Recommended)
-- **Free users**: FAL Schnell (free)
-- **BYOK users**: Their keys ($0 cost to you)
-- **Pro users**: Your API keys + premium features
-- **Best economics**: Charge for features, not just API access
+- **All users**: BYOK model (bring their own FAL.ai, OpenAI, etc. keys)
+- **Your cost**: $0 for AI generation
+- **Revenue sources**: Premium features, templates, exports, storage
+- **Best economics**: Charge for features, not API access
 
 ## Revenue Projections
 

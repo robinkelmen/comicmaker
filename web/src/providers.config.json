@@ -1,14 +1,15 @@
 {
   "fal-free": {
-    "name": "Free (FLUX)",
+    "name": "FLUX Schnell (FAL)",
     "icon": "⚡",
     "color": "#10b981",
-    "cost": "Free",
+    "cost": "Free tier",
     "speed": "Fast",
-    "requiresKey": false,
-    "keyName": "",
+    "requiresKey": true,
+    "keyName": "fal",
     "url": "https://queue.fal.run/fal-ai/flux/schnell",
     "headers": {
+      "Authorization": "Key ${apiKey}",
       "Content-Type": "application/json"
     },
     "body": {

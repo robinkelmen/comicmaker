@@ -70,6 +70,32 @@ export function ProviderSettings() {
           <button onClick={() => setShowKeys(!showKeys)}>
             {showKeys ? '👁️ Hide' : '👁️ Show'}
           </button>
+
+          {/* Provider-specific help */}
+          <div className="provider-help">
+            {currentProvider.keyName === 'fal' && (
+              <small>
+                Get your free FAL.ai API key:
+                <br />
+                1. Sign up at <a href="https://fal.ai" target="_blank" rel="noopener noreferrer">fal.ai</a>
+                <br />
+                2. Free tier includes generous credits for testing
+                <br />
+                3. FLUX Schnell is fast and affordable (~$0.003/image)
+              </small>
+            )}
+            {currentProvider.keyName === 'openai' && (
+              <small>
+                Get your OpenAI API key:
+                <br />
+                1. Go to <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">platform.openai.com/api-keys</a>
+                <br />
+                2. If you have ChatGPT Plus, you can use the same account
+                <br />
+                3. DALL-E 3 costs ~$0.04 per image
+              </small>
+            )}
+          </div>
         </div>
       )}
 
@@ -162,6 +188,30 @@ export function ProviderSettings() {
           border: none;
           border-radius: 4px;
           cursor: pointer;
+        }
+
+        .provider-help {
+          margin-top: 12px;
+          padding: 12px;
+          background: #eff6ff;
+          border-left: 3px solid #3b82f6;
+          border-radius: 4px;
+        }
+
+        .provider-help small {
+          display: block;
+          color: #1e40af;
+          line-height: 1.6;
+        }
+
+        .provider-help a {
+          color: #2563eb;
+          font-weight: 600;
+          text-decoration: none;
+        }
+
+        .provider-help a:hover {
+          text-decoration: underline;
         }
       `}</style>
     </div>

@@ -3,8 +3,9 @@ import { parseNatural } from './naturalParser'
 import { ComicPreview } from './ComicPreview'
 import { GenerationStatus } from './ProgressBar'
 import { saveComic, loadComics, updateComic, deleteComic, SavedComic } from './supabase'
-import { generatePanelImage, generatePageBackground, saveAISettings, loadAISettings, AISettings } from './ai'
-import type { Comic } from './types'
+import { generatePanelImage, generatePageBackground } from './ai'
+import { ProviderSettings } from './ProviderSettings'
+import type { Comic, Panel } from './types'
 
 const EXAMPLE_STORY = `Hero's Journey
 
@@ -30,7 +31,6 @@ export default function App() {
 
   // AI generation state
   const [showSettingsModal, setShowSettingsModal] = useState(false)
-  const [aiSettings, setAISettings] = useState<AISettings | null>(() => loadAISettings())
   const [generatingAll, setGeneratingAll] = useState(false)
   const [currentGenerating, setCurrentGenerating] = useState(0)
   const [totalToGenerate, setTotalToGenerate] = useState(0)
@@ -147,20 +147,32 @@ export default function App() {
     setShowSaveModal(true)
   }
 
-  const handleSaveAISettings = (settings: AISettings) => {
-    setAISettings(settings)
-    saveAISettings(settings)
-    setShowSettingsModal(false)
-    setMessage({ type: 'success', text: 'AI settings saved!' })
+
+  const handleUpdatePanel = (pageIndex: number, panelIndex: number, updatedPanel: Panel) => {
+    if (!comic) return
+
+    const updatedComic: Comic = {
+      ...comic,
+      pages: comic.pages.map((page, pIdx) =>
+        pIdx === pageIndex
+          ? {
+              ...page,
+              panels: page.panels.map((panel, panIdx) =>
+                panIdx === panelIndex ? updatedPanel : panel
+              )
+            }
+          : page
+      )
+    }
+    setComic(updatedComic)
+
+    // Auto-save if comic is already saved
+    if (currentComicId) {
+      updateComic(currentComicId, saveTitle, script, updatedComic)
+    }
   }
 
   const handleGeneratePanel = async (pageIndex: number, panelIndex: number) => {
-    if (!aiSettings) {
-      setMessage({ type: 'error', text: 'Please configure AI settings first' })
-      setShowSettingsModal(true)
-      return
-    }
-
     if (!comic) return
 
     // Set panel as generating with proper immutability
@@ -182,7 +194,7 @@ export default function App() {
 
     try {
       const panel = comic.pages[pageIndex].panels[panelIndex]
-      const imageUrl = await generatePanelImage(panel, aiSettings)
+      const imageUrl = await generatePanelImage(panel)
 
       // Update panel with generated image
       const finalComic: Comic = {
@@ -231,20 +243,13 @@ export default function App() {
   }
 
   const handleGeneratePageBackground = async () => {
-    if (!aiSettings) {
-      setMessage({ type: 'error', text: 'Please configure AI settings first' })
-      setShowSettingsModal(true)
-      return
-    }
-
     if (!comic) return
 
     try {
       setMessage({ type: 'success', text: 'Generating page background...' })
       const pageBackgroundUrl = await generatePageBackground(
         comic.title,
-        comic.style || 'cartoon',
-        aiSettings
+        comic.style || 'cartoon'
       )
 
       const updatedComic: Comic = {
@@ -265,12 +270,6 @@ export default function App() {
   }
 
   const handleGenerateAll = async () => {
-    if (!aiSettings) {
-      setMessage({ type: 'error', text: 'Please configure AI settings first' })
-      setShowSettingsModal(true)
-      return
-    }
-
     if (!comic) return
 
     // Count total panels to generate
@@ -304,7 +303,7 @@ export default function App() {
         setCurrentGenerating(successCount + failCount + 1)
 
         try {
-          const imageUrl = await generatePanelImage(panel, aiSettings)
+          const imageUrl = await generatePanelImage(panel)
 
           // Update panel with generated image immutably
           workingComic = {
@@ -429,6 +428,7 @@ export default function App() {
             <ComicPreview
               comic={comic || result.comic}
               onGeneratePanel={previewMode ? undefined : handleGeneratePanel}
+              onUpdatePanel={previewMode ? undefined : handleUpdatePanel}
               generating={generatingAll}
             />
           ) : (
@@ -498,81 +498,30 @@ export default function App() {
         </div>
       )}
 
-      {showSettingsModal && <AISettingsModal
-        currentSettings={aiSettings}
-        onSave={handleSaveAISettings}
-        onClose={() => setShowSettingsModal(false)}
-      />}
+      {showSettingsModal && (
+        <div className="modal-overlay" onClick={() => setShowSettingsModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <button
+              className="modal-close"
+              onClick={() => setShowSettingsModal(false)}
+              style={{
+                position: 'absolute',
+                top: '10px',
+                right: '10px',
+                background: 'none',
+                border: 'none',
+                fontSize: '24px',
+                cursor: 'pointer',
+                padding: '5px 10px'
+              }}
+            >
+              ×
+            </button>
+            <ProviderSettings />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-function AISettingsModal({ currentSettings, onSave, onClose }: {
-  currentSettings: AISettings | null
-  onSave: (settings: AISettings) => void
-  onClose: () => void
-}) {
-  const [provider, setProvider] = useState<'stability' | 'openai'>(currentSettings?.provider || 'stability')
-  const [apiKey, setApiKey] = useState(currentSettings?.apiKey || '')
-  const [style, setStyle] = useState(currentSettings?.style || 'comic book')
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!apiKey.trim()) {
-      alert('Please enter an API key')
-      return
-    }
-    onSave({ provider, apiKey: apiKey.trim(), style: style.trim() })
-  }
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <h2>AI Settings</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>AI Provider</label>
-            <select value={provider} onChange={(e) => setProvider(e.target.value as 'stability' | 'openai')}>
-              <option value="stability">Stability AI (Recommended)</option>
-              <option value="openai">OpenAI (DALL-E 3)</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label>API Key</label>
-            <input
-              type="password"
-              placeholder={provider === 'stability' ? 'sk-...' : 'sk-...'}
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              autoFocus
-            />
-            <small>
-              {provider === 'stability' ? (
-                <>Get your key at <a href="https://platform.stability.ai" target="_blank" rel="noopener noreferrer">platform.stability.ai</a></>
-              ) : (
-                <>Get your key at <a href="https://platform.openai.com" target="_blank" rel="noopener noreferrer">platform.openai.com</a></>
-              )}
-            </small>
-          </div>
-
-          <div className="form-group">
-            <label>Style Prefix (Optional)</label>
-            <input
-              type="text"
-              placeholder="e.g., comic book, manga, watercolor"
-              value={style}
-              onChange={(e) => setStyle(e.target.value)}
-            />
-            <small>Add a style prefix to all prompts (e.g., "manga style comic panel")</small>
-          </div>
-
-          <div className="modal-actions">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary">Save Settings</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}

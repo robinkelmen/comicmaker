@@ -1,152 +1,182 @@
 import type { Panel } from './types'
+import { generateImage, loadConfig } from './imageEngine'
 
+// Legacy interface - keeping for compatibility
 export interface AISettings {
   provider: 'stability' | 'openai'
   apiKey: string
   style?: string
+  backgroundSystemPrompt?: string
 }
 
+// Generate panel image using data-driven engine
 export async function generatePanelImage(
   panel: Panel,
-  settings: AISettings
+  settings?: AISettings
 ): Promise<string> {
-  if (!settings.apiKey) {
-    throw new Error('API key is required')
-  }
+  const prompt = buildPrompt(panel, settings?.style)
+  const config = loadConfig()
 
-  const prompt = buildPrompt(panel, settings.style)
-
-  if (settings.provider === 'stability') {
-    return generateWithStability(prompt, settings.apiKey)
-  } else {
-    return generateWithOpenAI(prompt, settings.apiKey)
-  }
+  return generateImage(prompt, config.provider as any, config.apiKeys)
 }
 
 function buildPrompt(panel: Panel, style?: string): string {
+  return buildStructuredPrompt(panel, style)
+}
+
+/**
+ * Enhanced structured prompt builder with detailed composition control
+ */
+function buildStructuredPrompt(panel: Panel, styleOverride?: string): string {
   const parts: string[] = []
 
-  // Add style prefix
-  if (style) {
-    parts.push(`${style} style comic panel:`)
+  // 1. Style prefix - use rendering style first, then override, then default
+  const style = panel.rendering?.style || styleOverride || 'comic book'
+  parts.push(`${style} style comic panel.`)
+
+  // 2. Shot composition
+  if (panel.composition) {
+    const { cameraAngle, shot, focus } = panel.composition
+    if (shot) {
+      parts.push(`${shot} shot`)
+      if (cameraAngle) {
+        parts.push(`from ${cameraAngle} angle.`)
+      } else {
+        parts.push('.')
+      }
+    } else if (cameraAngle) {
+      parts.push(`Shot from ${cameraAngle} angle.`)
+    }
+    if (focus) {
+      parts.push(`Focus on ${focus}.`)
+    }
   }
 
-  // Add scene description
+  // 3. Characters with detailed description
+  if (panel.characters && panel.characters.length > 0) {
+    panel.characters.forEach(char => {
+      const charParts: string[] = []
+      charParts.push(char.name)
+
+      if (char.position) {
+        charParts.push(`positioned ${char.position}`)
+      }
+      if (char.expression) {
+        charParts.push(`${char.expression} expression`)
+      }
+      if (char.pose) {
+        charParts.push(char.pose)
+      }
+      if (char.clothing) {
+        charParts.push(`wearing ${char.clothing}`)
+      }
+
+      parts.push(charParts.join(', ') + '.')
+    })
+  } else {
+    // Fallback: extract characters from dialogue elements
+    const dialogueCharacters = panel.elements
+      .filter(el => el.type === 'dialogue')
+      .map(el => ({ name: el.character, expression: el.emotion }))
+
+    if (dialogueCharacters.length > 0) {
+      dialogueCharacters.forEach(char => {
+        const charDesc = char.expression
+          ? `${char.name} with ${char.expression} expression`
+          : char.name
+        parts.push(`featuring ${charDesc}.`)
+      })
+    }
+  }
+
+  // 4. Environment
+  if (panel.environment) {
+    const { setting, lighting, weather, timeOfDay } = panel.environment
+    if (setting) {
+      parts.push(`Setting: ${setting}.`)
+    }
+    if (lighting || timeOfDay) {
+      const lightDesc: string[] = []
+      if (lighting) lightDesc.push(`${lighting} lighting`)
+      if (timeOfDay) lightDesc.push(`at ${timeOfDay}`)
+      parts.push(lightDesc.join(' ') + '.')
+    }
+    if (weather) {
+      parts.push(`Weather: ${weather}.`)
+    }
+  }
+
+  // 5. Action/Scene description
   if (panel.scene) {
     parts.push(panel.scene)
   }
 
-  // Add character info from dialogue
-  const characters = panel.elements
-    .filter(el => el.type === 'dialogue')
-    .map(el => el.character)
+  // 6. Speech bubbles with EXACT TEXT (for text-capable models)
+  if (panel.speechBubbles && panel.speechBubbles.length > 0) {
+    parts.push('\nSpeech bubbles with EXACT TEXT:')
+    panel.speechBubbles.forEach((bubble, i) => {
+      const bubbleStyle = bubble.style === 'shout' ? 'jagged edges' :
+                         bubble.style === 'whisper' ? 'dashed outline' :
+                         bubble.style === 'thought' ? 'cloud shape' : 'standard'
+      parts.push(`\nBubble ${i + 1}: "${bubble.text}" (${bubbleStyle}, tail pointing ${bubble.tailDirection || 'down'})`)
+    })
+  } else {
+    // Fallback: create speech bubbles from dialogue elements
+    const dialogueElements = panel.elements.filter(el => el.type === 'dialogue')
+    if (dialogueElements.length > 0) {
+      parts.push('\nSpeech bubbles with EXACT TEXT:')
+      dialogueElements.forEach((el, i) => {
+        const bubbleStyle = el.style === 'shout' ? 'jagged edges' :
+                           el.style === 'whisper' ? 'dashed outline' :
+                           el.style === 'thought' ? 'cloud shape' : 'standard'
+        parts.push(`\nBubble ${i + 1}: "${el.text}" spoken by ${el.character} (${bubbleStyle})`)
+      })
+    }
+  }
 
-  if (characters.length > 0) {
-    parts.push(`featuring ${characters.join(', ')}`)
+  // 7. Sound effects with specific text
+  const sfxElements = panel.elements.filter(el => el.type === 'sfx')
+  if (sfxElements.length > 0) {
+    parts.push('\nSound effect text:')
+    sfxElements.forEach(sfx => {
+      const intensity = sfx.intensity || 'medium'
+      parts.push(`"${sfx.text}" (${intensity} intensity)`)
+    })
+  }
+
+  // 8. Visual effects
+  if (panel.rendering?.effects && panel.rendering.effects.length > 0) {
+    parts.push(`\nVisual effects: ${panel.rendering.effects.join(', ')}.`)
+  }
+
+  // 9. Color palette
+  if (panel.rendering?.colorPalette && panel.rendering.colorPalette.length > 0) {
+    parts.push(`Color palette: ${panel.rendering.colorPalette.join(', ')}.`)
+  }
+
+  // 10. Mood
+  if (panel.rendering?.mood) {
+    parts.push(`Overall mood: ${panel.rendering.mood}.`)
   }
 
   return parts.join(' ')
 }
 
-async function generateWithStability(
-  prompt: string,
-  apiKey: string
-): Promise<string> {
-  const response = await fetch(
-    'https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        text_prompts: [{ text: prompt }],
-        cfg_scale: 7,
-        height: 1024,
-        width: 1024,
-        samples: 1,
-        steps: 30,
-      }),
-    }
-  )
-
-  if (!response.ok) {
-    const error = await response.text()
-    throw new Error(`Stability AI error: ${error}`)
-  }
-
-  const data = await response.json()
-  const base64Image = data.artifacts[0].base64
-
-  // Convert to blob URL for display
-  const blob = base64ToBlob(base64Image, 'image/png')
-  return URL.createObjectURL(blob)
-}
-
-async function generateWithOpenAI(
-  prompt: string,
-  apiKey: string
-): Promise<string> {
-  const response = await fetch('https://api.openai.com/v1/images/generations', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: 'dall-e-3',
-      prompt,
-      n: 1,
-      size: '1024x1024',
-    }),
-  })
-
-  if (!response.ok) {
-    const error = await response.text()
-    throw new Error(`OpenAI error: ${error}`)
-  }
-
-  const data = await response.json()
-  return data.data[0].url
-}
-
-function base64ToBlob(base64: string, mimeType: string): Blob {
-  const byteCharacters = atob(base64)
-  const byteArrays = []
-
-  for (let i = 0; i < byteCharacters.length; i++) {
-    byteArrays.push(byteCharacters.charCodeAt(i))
-  }
-
-  return new Blob([new Uint8Array(byteArrays)], { type: mimeType })
-}
-
-// Save AI settings to localStorage
-export function saveAISettings(settings: AISettings): void {
-  localStorage.setItem('ai_settings', JSON.stringify(settings))
-}
-
-export function loadAISettings(): AISettings | null {
-  const saved = localStorage.getItem('ai_settings')
-  return saved ? JSON.parse(saved) : null
-}
-
+// Page background generation
 export async function generatePageBackground(
   title: string,
   style: string,
-  settings: AISettings
+  settings?: AISettings
 ): Promise<string> {
-  if (!settings.apiKey) {
-    throw new Error('API key is required')
-  }
+  const config = loadConfig()
 
   // Build prompt for page background
-  const prompt = `${settings.style || style || 'comic book'} style full page background for a comic book page, title: "${title}", textured paper, vintage comic aesthetic, blank space for panels, professional comic book layout`
+  const styleStr = settings?.style || style || 'comic book'
+  const prompt = settings?.backgroundSystemPrompt
+    ? settings.backgroundSystemPrompt
+        .replace('{title}', title)
+        .replace('{style}', styleStr)
+    : `${styleStr} style full page background for a comic book page, title: "${title}", textured paper, vintage comic aesthetic, blank space for panels, professional comic book layout`
 
-  if (settings.provider === 'stability') {
-    return generateWithStability(prompt, settings.apiKey)
-  } else {
-    return generateWithOpenAI(prompt, settings.apiKey)
-  }
+  return generateImage(prompt, config.provider as any, config.apiKeys)
 }

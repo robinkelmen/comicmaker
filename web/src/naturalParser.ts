@@ -1,4 +1,4 @@
-import type { Comic, Page, Panel, Dialogue, SoundEffect, Narration } from './types'
+import type { Comic, Page, Panel, Dialogue, SoundEffect, Narration, CameraAngle, ShotType, FocusType, LightingType, TimeOfDay } from './types'
 
 /**
  * Natural Language Parser
@@ -242,10 +242,91 @@ function parseSegment(segment: string): Panel {
   // What's left is the scene description
   const scene = remainingText.trim() || segment.substring(0, 150)
 
+  // Extract composition hints from scene description
+  const composition = extractComposition(scene)
+  const environment = extractEnvironment(scene)
+
   return {
     scene,
-    elements
+    elements,
+    composition: Object.keys(composition).length > 0 ? composition : undefined,
+    environment: Object.keys(environment).length > 0 ? environment : undefined
   }
+}
+
+// Extract camera composition from scene description
+function extractComposition(scene: string): { shot?: ShotType; cameraAngle?: CameraAngle; focus?: FocusType } {
+  const lower = scene.toLowerCase()
+  const composition: { shot?: ShotType; cameraAngle?: CameraAngle; focus?: FocusType } = {}
+
+  // Shot types
+  if (lower.includes('extreme close-up') || lower.includes('extreme closeup')) {
+    composition.shot = 'extreme-close-up'
+  } else if (lower.includes('close-up') || lower.includes('closeup')) {
+    composition.shot = 'close-up'
+  } else if (lower.includes('medium shot')) {
+    composition.shot = 'medium'
+  } else if (lower.includes('full shot') || lower.includes('full body')) {
+    composition.shot = 'full'
+  } else if (lower.includes('long shot')) {
+    composition.shot = 'long'
+  } else if (lower.includes('extreme long')) {
+    composition.shot = 'extreme-long'
+  }
+
+  // Camera angles
+  if (lower.includes('high angle') || lower.includes('bird\'s eye')) {
+    composition.cameraAngle = 'high-angle'
+  } else if (lower.includes('low angle') || lower.includes('worm\'s eye')) {
+    composition.cameraAngle = 'low-angle'
+  } else if (lower.includes('dutch angle') || lower.includes('tilted')) {
+    composition.cameraAngle = 'dutch-angle'
+  } else if (lower.includes('over shoulder') || lower.includes('over-the-shoulder')) {
+    composition.cameraAngle = 'over-shoulder'
+  }
+
+  return composition
+}
+
+// Extract environment details from scene description
+function extractEnvironment(scene: string): { lighting?: LightingType; timeOfDay?: TimeOfDay; weather?: string } {
+  const lower = scene.toLowerCase()
+  const environment: { lighting?: LightingType; timeOfDay?: TimeOfDay; weather?: string } = {}
+
+  // Lighting
+  if (lower.includes('bright') || lower.includes('sunny')) {
+    environment.lighting = 'bright'
+  } else if (lower.includes('dim') || lower.includes('dark')) {
+    environment.lighting = 'dim'
+  } else if (lower.includes('dramatic') || lower.includes('spotlight')) {
+    environment.lighting = 'dramatic'
+  } else if (lower.includes('neon')) {
+    environment.lighting = 'neon'
+  } else if (lower.includes('silhouette')) {
+    environment.lighting = 'silhouette'
+  }
+
+  // Time of day
+  if (lower.includes('dawn') || lower.includes('sunrise')) {
+    environment.timeOfDay = 'dawn'
+  } else if (lower.includes('day') || lower.includes('noon') || lower.includes('afternoon')) {
+    environment.timeOfDay = 'day'
+  } else if (lower.includes('dusk') || lower.includes('sunset')) {
+    environment.timeOfDay = 'dusk'
+  } else if (lower.includes('night') || lower.includes('midnight')) {
+    environment.timeOfDay = 'night'
+  }
+
+  // Weather
+  if (lower.includes('rain') || lower.includes('storm')) {
+    environment.weather = 'rain'
+  } else if (lower.includes('snow')) {
+    environment.weather = 'snow'
+  } else if (lower.includes('fog') || lower.includes('mist')) {
+    environment.weather = 'fog'
+  }
+
+  return environment
 }
 
 function extractCharacter(fullMatch: string, dialogue: string): string | null {

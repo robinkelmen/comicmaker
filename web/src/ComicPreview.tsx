@@ -1,12 +1,14 @@
+import { useState } from 'react'
 import type { Comic, Panel, Dialogue, SoundEffect, Narration, PanelElement } from './types'
 
 interface Props {
   comic: Comic
   onGeneratePanel?: (pageIndex: number, panelIndex: number) => void
+  onUpdatePanel?: (pageIndex: number, panelIndex: number, panel: Panel) => void
   generating?: boolean
 }
 
-export function ComicPreview({ comic, onGeneratePanel, generating }: Props) {
+export function ComicPreview({ comic, onGeneratePanel, onUpdatePanel, generating }: Props) {
   const getLayoutClass = (panelCount: number) => {
     if (panelCount === 1) return 'layout-single'
     if (panelCount === 2) return 'layout-2x1'
@@ -37,6 +39,7 @@ export function ComicPreview({ comic, onGeneratePanel, generating }: Props) {
                 key={panelIndex}
                 panel={panel}
                 onGenerate={onGeneratePanel ? () => onGeneratePanel(pageIndex, panelIndex) : undefined}
+                onUpdate={onUpdatePanel ? (updatedPanel) => onUpdatePanel(pageIndex, panelIndex, updatedPanel) : undefined}
                 generating={generating}
               />
             ))}
@@ -47,11 +50,14 @@ export function ComicPreview({ comic, onGeneratePanel, generating }: Props) {
   )
 }
 
-function PanelView({ panel, onGenerate, generating }: {
+function PanelView({ panel, onGenerate, onUpdate, generating }: {
   panel: Panel
   onGenerate?: () => void
+  onUpdate?: (panel: Panel) => void
   generating?: boolean
 }) {
+  const [showCompositionControls, setShowCompositionControls] = useState(false)
+
   const panelStyle = panel.imageUrl
     ? {
         backgroundImage: `url(${panel.imageUrl})`,
@@ -59,6 +65,32 @@ function PanelView({ panel, onGenerate, generating }: {
         backgroundPosition: 'center',
       }
     : {}
+
+  const handleCompositionChange = (field: string, value: any) => {
+    if (!onUpdate) return
+
+    const updatedPanel = {
+      ...panel,
+      composition: {
+        ...panel.composition,
+        [field]: value || undefined
+      }
+    }
+    onUpdate(updatedPanel)
+  }
+
+  const handleEnvironmentChange = (field: string, value: any) => {
+    if (!onUpdate) return
+
+    const updatedPanel = {
+      ...panel,
+      environment: {
+        ...panel.environment,
+        [field]: value || undefined
+      }
+    }
+    onUpdate(updatedPanel)
+  }
 
   return (
     <div className="panel" style={panelStyle}>
@@ -68,6 +100,98 @@ function PanelView({ panel, onGenerate, generating }: {
           <ElementView key={i} element={element} />
         ))}
       </div>
+
+      {onUpdate && (
+        <button
+          className="btn btn-secondary btn-small"
+          onClick={() => setShowCompositionControls(!showCompositionControls)}
+          style={{ position: 'absolute', top: '5px', right: '5px', fontSize: '0.75em' }}
+        >
+          {showCompositionControls ? '✕' : '⚙️'}
+        </button>
+      )}
+
+      {showCompositionControls && onUpdate && (
+        <div className="composition-controls" style={{
+          position: 'absolute',
+          bottom: '40px',
+          left: '5px',
+          right: '5px',
+          background: 'rgba(255, 255, 255, 0.95)',
+          border: '1px solid #ccc',
+          borderRadius: '4px',
+          padding: '8px',
+          fontSize: '0.75em',
+          maxHeight: '200px',
+          overflowY: 'auto'
+        }}>
+          <div style={{ marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '2px' }}>Shot Type:</label>
+            <select
+              value={panel.composition?.shot || ''}
+              onChange={(e) => handleCompositionChange('shot', e.target.value)}
+              style={{ width: '100%', padding: '2px' }}
+            >
+              <option value="">Default</option>
+              <option value="extreme-close-up">Extreme Close-up</option>
+              <option value="close-up">Close-up</option>
+              <option value="medium">Medium</option>
+              <option value="full">Full</option>
+              <option value="long">Long</option>
+              <option value="extreme-long">Extreme Long</option>
+            </select>
+          </div>
+
+          <div style={{ marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '2px' }}>Camera Angle:</label>
+            <select
+              value={panel.composition?.cameraAngle || ''}
+              onChange={(e) => handleCompositionChange('cameraAngle', e.target.value)}
+              style={{ width: '100%', padding: '2px' }}
+            >
+              <option value="">Default</option>
+              <option value="eye-level">Eye Level</option>
+              <option value="high-angle">High Angle</option>
+              <option value="low-angle">Low Angle</option>
+              <option value="dutch-angle">Dutch Angle</option>
+              <option value="over-shoulder">Over Shoulder</option>
+            </select>
+          </div>
+
+          <div style={{ marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '2px' }}>Lighting:</label>
+            <select
+              value={panel.environment?.lighting || ''}
+              onChange={(e) => handleEnvironmentChange('lighting', e.target.value)}
+              style={{ width: '100%', padding: '2px' }}
+            >
+              <option value="">Default</option>
+              <option value="bright">Bright</option>
+              <option value="dim">Dim</option>
+              <option value="dramatic">Dramatic</option>
+              <option value="natural">Natural</option>
+              <option value="neon">Neon</option>
+              <option value="silhouette">Silhouette</option>
+            </select>
+          </div>
+
+          <div style={{ marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '2px' }}>Time of Day:</label>
+            <select
+              value={panel.environment?.timeOfDay || ''}
+              onChange={(e) => handleEnvironmentChange('timeOfDay', e.target.value)}
+              style={{ width: '100%', padding: '2px' }}
+            >
+              <option value="">Default</option>
+              <option value="dawn">Dawn</option>
+              <option value="day">Day</option>
+              <option value="dusk">Dusk</option>
+              <option value="night">Night</option>
+            </select>
+          </div>
+        </div>
+      )}
+
       {onGenerate && (
         <button
           className={`btn ${panel.imageUrl ? 'btn-regenerate' : 'btn-generate'}`}
